@@ -1,0 +1,8 @@
+training_day_id,order,exercise_a_slug,exercise_b_slug,prescription
+1,1,leg-press-maquina,agachamento-taca,"3x • 15–20"
+1,2,cadeira-extensora,afundo,"3x • 15–20"
+1,3,mesa-flexora,cadeira-flexora,"3x • 15–20"
+1,4,puxada-frontal-maquina,remada-curvada-serrote,"3x • 15–20"
+1,5,supino-maquina,supino-reto-halteres,"3x • 15–20"
+1,6,desenvolvimento-maquina,desenvolvimento-halteres,"3x • 15–20"
+1,7,abdominal-maquina,abdominal-solo,"3x • 15–20"
