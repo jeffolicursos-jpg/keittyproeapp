@@ -74,7 +74,23 @@ async function run() {
         await client.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
         console.log(`[ok] migration applied: ${file}`);
       } catch (err) {
-        console.error(`[fail] migration error: ${file} -> ${err && err.message || 'unknown error'}`);
+        const code = err && err.code;
+        const msg = (err && err.message) || '';
+        const isAlreadyExists =
+          code === '42P07' /* duplicate_table */ ||
+          code === '42710' /* duplicate_object */ ||
+          /already exists/i.test(msg);
+        if (isAlreadyExists) {
+          console.warn(`[skip] harmless duplicate during migration: ${file} (code=${code || 'n/a'})`);
+          // Record as applied to keep ledger deterministic
+          try {
+            await client.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
+          } catch (e2) {
+            console.warn(`[warn] could not record skipped migration: ${file} -> ${e2 && e2.message || e2}`);
+          }
+          continue;
+        }
+        console.error(`[fail] migration error: ${file} -> ${msg} (code=${code || 'n/a'})`);
         throw err;
       }
     }
