@@ -14,19 +14,65 @@ export default function RecipeViewer() {
 
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [dataSource, setDataSource] = useState<'api' | 'local'>('local');
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
 
   useEffect(() => {
     if (id) {
-      const recipeId = parseInt(id as string, 10);
-      const foundRecipe = recipes.find(r => r.recipeNumber === recipeId);
-      setRecipe(foundRecipe || null);
+      const idStr = String(id);
+      const load = async () => {
+        let foundRecipe: Recipe | null = null;
+        try {
+          const res = await fetch(`/api/recipes/${idStr}`, { cache: 'no-store' });
+          if (res.ok) {
+            const j: any = await res.json().catch(() => null);
+            if (j) {
+              const mapped: Recipe = {
+                name: String(j.name || 'Receita'),
+                imageUrl: '/images/sweetpotato.png',
+                imageHint: 'dish photo',
+                portions: 1,
+                temperature: 'Quente',
+                totalTime: '20 min',
+                tip: String(j.description || ''),
+                proteinGrams: typeof j.protein === 'number' ? j.protein : undefined,
+                ingredients: [],
+                preparationSteps: [],
+                benefits: [],
+                recipeNumber: 0,
+                tags: ['Publicado'],
+                status: 'published',
+              };
+              foundRecipe = mapped;
+              setDataSource('api');
+            }
+          }
+        } catch {}
+        if (!foundRecipe) {
+          const recipeId = parseInt(idStr, 10);
+          if (!Number.isNaN(recipeId)) {
+            foundRecipe = recipes.find(r => r.recipeNumber === recipeId) || null;
+            try {
+              const raw = localStorage.getItem('recipes');
+              const arr = raw ? JSON.parse(raw) as Recipe[] : [];
+              const override = arr.find(r => r.recipeNumber === recipeId);
+              if (override) foundRecipe = override;
+            } catch {}
+            setDataSource('local');
+          }
+        }
+        setRecipe(foundRecipe);
+      };
+      load();
 
       // Mock favorite status
       const favs = localStorage.getItem('userProfile');
       if (favs) {
         const profile = JSON.parse(favs);
-        setIsFavorited(profile.favoritedRecipeIds?.includes(recipeId));
+        const recipeIdNum = parseInt(idStr, 10);
+        if (!Number.isNaN(recipeIdNum)) {
+          setIsFavorited(profile.favoritedRecipeIds?.includes(recipeIdNum));
+        }
       }
     }
   }, [id]);
@@ -64,6 +110,7 @@ export default function RecipeViewer() {
       onCompleteRecipe={handleCompleteRecipe}
       onToggleFavorite={handleToggleFavorite}
       isFavorited={isFavorited}
+      dataSource={dataSource}
     />
   );
 }

@@ -25,7 +25,7 @@ export default function LoadInput({ value, onChange, editable = true }: Props) {
   }, []);
 
   return (
-    <div className={`mx-4 mt-4 relative rounded-xl ${focused ? 'border-2 border-[#FF4D2D]' : 'border border-neutral-700'} bg-[#121212]`}>
+    <div className={`mx-4 mt-4 relative rounded-xl ${focused ? 'border-2 border-primary' : 'border border-neutral-700'} bg-[#121212]`}>
       <input
         type="text"
         value={value}
@@ -41,7 +41,7 @@ export default function LoadInput({ value, onChange, editable = true }: Props) {
       />
       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400">kg</span>
       {!isValid && (
-        <div className="px-5 pb-3 text-xs text-[#FF4D2D]">Formato: 80,0</div>
+        <div className="px-5 pb-3 text-xs text-primary">Formato: 80,0</div>
       )}
     </div>
   );

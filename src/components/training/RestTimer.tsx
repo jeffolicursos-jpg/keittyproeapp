@@ -31,7 +31,7 @@ export default function RestTimer({ seconds, onFinish }: Props) {
         <div className="text-xl">{left}s</div>
       </div>
       <div className="h-2 rounded bg-neutral-700 overflow-hidden">
-        <div className="h-full bg-[#FF4D2D]" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

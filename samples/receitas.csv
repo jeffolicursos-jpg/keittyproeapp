@@ -1,0 +1,11 @@
+recipe_number,name,image_url,image_hint,portions,temperature,total_time,tip,protein_grams,tags,status,plano_minimo,cronometro,calorias_kcal
+1,Strogonoff Fit,/images/strog1.png,principal,4,Quente,30min,peito cubos,35,principal|janta,published,basico,00:30:00,550
+2,Frango Grelhado,/images/frango.png,principal,4,Quente,25min,marinar alho,42,cena|proteina,published,basico,00:25:00,420
+3,Omelete Clara,/images/omelete.png,cafe,2,Quente,8min,antiaderente,28,cafe|proteina,published,basico,00:08:00,280
+4,Shake Whey Banana,/images/shake.png,shake,1,Frio,3min,gelo,30,cafe|pos,published,premium,00:03:00,350
+5,Salada Premium,/images/salada.png,almoço,2,Frio,10min,azeite EV,22,almoço|verde,published,premium,00:10:00,220
+6,Brownie Fit,/images/brownie.png,sobremesa,8,Frio,40min,aveia,12,sobremesa|fit,published,vip,00:40:00,180
+7,Arroz Feijão Light,/images/arrozfeijao.png,principal,2,Quente,35min,tempero leve,18,almoço|principal,published,basico,00:35:00,350
+8,Peixe Assado,/images/peixe.png,principal,2,Quente,20min,limão,26,almoço|leve,published,basico,00:20:00,320
+9,Iogurte com Frutas,/images/iogurte.png,lanche,1,Frio,5min,fruta fresca,12,lanche|leve,published,basico,00:05:00,180
+10,Frango Premium Ervas,/images/frango_ervas.png,principal,2,Quente,28min,ervas,36,principal|premium,published,premium,00:28:00,410

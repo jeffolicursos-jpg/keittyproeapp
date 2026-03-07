@@ -3,13 +3,17 @@ import IngredientsSection from '@/components/recipe/IngredientsSection';
 import PreparationSteps from '@/components/recipe/PreparationSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChefHat, AlarmClock, ArrowLeft, Users, Clock, Heart, Home } from 'lucide-react';
-import Link from 'next/link';
-import RecipeTimer from '@/components/recipe/RecipeTimer';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import RecipeTimer from '@/components/recipe/RecipeTimer';
 import type { ActiveTimer } from '@/app/page';
-import { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import Image from 'next/image';
+import { useToast } from '@/hooks/use-toast';
 
 interface RecipePageProps {
   recipe: Recipe;
@@ -20,12 +24,14 @@ interface RecipePageProps {
   onCompleteRecipe: (callback: () => void) => void;
   onToggleFavorite: (recipeId: number) => void;
   isFavorited: boolean;
+  dataSource?: 'api' | 'local';
 }
 
-export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer, onAddToShoppingList, onCompleteRecipe, onToggleFavorite, isFavorited }: RecipePageProps) {
+export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer, onAddToShoppingList, onCompleteRecipe, onToggleFavorite, isFavorited, dataSource }: RecipePageProps) {
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [favorited, setFavorited] = useState<boolean>(isFavorited);
   useEffect(() => setFavorited(isFavorited), [isFavorited]);
+  const router = useRouter();
   const handleAddAllToShoppingList = () => {
     const items = recipe.ingredients.map(i => `${i.quantity} ${i.name}`.trim());
     onAddToShoppingList(recipe.name, items);
@@ -54,8 +60,10 @@ export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer
     return totalMinutes;
   };
   const totalMinutes = parseTime(recipe.totalTime);
-  const prepMinutes = Math.max(5, Math.round(totalMinutes * 0.66));
-  const cookMinutes = Math.max(0, totalMinutes - prepMinutes);
+  const prepOverride = typeof (recipe as any).prepMinutes === 'number' ? (recipe as any).prepMinutes : undefined;
+  const cookOverride = typeof (recipe as any).cookMinutes === 'number' ? (recipe as any).cookMinutes : undefined;
+  const prepMinutes = typeof prepOverride === 'number' ? prepOverride : Math.max(5, Math.round(totalMinutes * 0.66));
+  const cookMinutes = typeof cookOverride === 'number' ? cookOverride : Math.max(0, totalMinutes - prepMinutes);
 
 
 
@@ -97,15 +105,221 @@ export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer
       <div className="bg-amber-100 text-[#1F2937] border border-amber-300 rounded-lg p-4 shadow-sm">
         <div className="text-center font-headline italic mb-2">Dica</div>
         <p className="text-sm md:text-base text-[#1F2937] text-center">
-          Estas torradas podem receber outros toppings: ovo pochê, tomatinhos,
-          homus ou uma camada de iogurte com ervas. Ótimas para um café reforçado
-          ou um lanche sem glúten!
+          {recipe.tip || 'Estas torradas podem receber outros toppings: ovo pochê, tomatinhos, homus ou uma camada de iogurte com ervas. Ótimas para um café reforçado ou um lanche sem glúten!'}
         </p>
       </div>
     </div>
   );
 
+  const isAdmin = (() => {
+    try {
+      const role = (document.cookie.split('; ').find(c => c.startsWith('role=')) || '').split('=')[1] || '';
+      return role === 'admin';
+    } catch { return false; }
+  })();
 
+  function AdminRecipeEditor({ recipe }: { recipe: Recipe }) {
+    const [name, setName] = useState(recipe.name);
+    const [imageUrl, setImageUrl] = useState(recipe.imageUrl);
+    const [portions, setPortions] = useState(String(recipe.portions || 1));
+    const [temperature, setTemperature] = useState(recipe.temperature || 'Quente');
+    const [totalTime, setTotalTime] = useState(recipe.totalTime || '20 min');
+    const [ingredientsText, setIngredientsText] = useState((recipe.ingredients || []).map(i => `${i.quantity || ''} ${i.name || ''}`.trim()).join('\n'));
+    const [stepsText, setStepsText] = useState((recipe.preparationSteps || []).map((s: any) => s.instruction ?? s).join('\n'));
+    const [status, setStatus] = useState<string>(recipe.status || 'published');
+    const { toast } = useToast();
+    const [tip, setTip] = useState<string>(recipe.tip || '');
+    useEffect(() => {
+      setTip(recipe.tip || '');
+    }, [recipe.tip]);
+    const [prep, setPrep] = useState<number>(() => {
+      const ov = (recipe as any).prepMinutes;
+      return typeof ov === 'number' ? ov : Math.max(5, Math.round(parseTime(recipe.totalTime) * 0.66));
+    });
+    const [cook, setCook] = useState<number>(() => {
+      const ov = (recipe as any).cookMinutes;
+      if (typeof ov === 'number') return ov;
+      const tm = parseTime(recipe.totalTime);
+      const p = Math.max(5, Math.round(tm * 0.66));
+      return Math.max(0, tm - p);
+    });
+
+    const save = async () => {
+      const updated = {
+        ...recipe,
+        name,
+        imageUrl,
+        portions: parseInt(portions || '1', 10) || 1,
+        temperature,
+        totalTime: totalTime || `${Math.max(0, Number(prep) + Number(cook))} min`,
+        prepMinutes: Number(prep),
+        cookMinutes: Number(cook),
+        tip,
+        ingredients: (ingredientsText || '').split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+          const [quantity, ...rest] = line.split(' ');
+          return { name: rest.join(' ') || line, quantity: quantity || '' };
+        }),
+        preparationSteps: (stepsText || '')
+          .split('\n')
+          .map(l => l.trim())
+          .filter(Boolean)
+          .map((instruction, idx) => ({ step: idx + 1, instruction })),
+      };
+      try {
+        await fetch(`/api/recipes/${recipe.recipeNumber}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(updated),
+          cache: 'no-store',
+        });
+      } catch {}
+      try {
+        const raw = localStorage.getItem('recipes');
+        const arr = raw ? JSON.parse(raw) : [];
+        const next = Array.isArray(arr) && arr.length
+          ? arr.map((r: any) => r.recipeNumber === updated.recipeNumber ? updated : r)
+          : [updated];
+        localStorage.setItem('recipes', JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent('recipes-updated', { detail: { recipeNumber: updated.recipeNumber, updated } }));
+      } catch {}
+      setStatus(updated.status || status);
+      toast({ title: 'Alterações salvas', description: 'Rascunho atualizado com sucesso.' });
+    };
+
+    const publish = async () => {
+      await save();
+      try {
+        await fetch(`/api/recipes/${recipe.recipeNumber}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ status: 'published' }),
+          cache: 'no-store',
+        });
+        const raw = localStorage.getItem('recipes');
+        const arr = raw ? JSON.parse(raw) : [];
+        const published = arr.map((r: any) => r.recipeNumber === recipe.recipeNumber ? { ...r, status: 'published' } : r);
+        localStorage.setItem('recipes', JSON.stringify(published));
+        window.dispatchEvent(new CustomEvent('recipes-updated', { detail: { recipeNumber: recipe.recipeNumber } }));
+      } catch {}
+      setStatus('published');
+      toast({ title: 'Receita publicada', description: 'As alterações foram publicadas e refletidas no app.' });
+    };
+
+    return (
+      <div className="mx-auto w-full max-w-xl mt-8">
+        <div className="border rounded-lg p-4 bg-card">
+          <div className="font-headline text-lg mb-3">Editar Receita (admin)</div>
+          <div className="mb-2 text-sm text-muted-foreground">Status: {status}</div>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-1">
+              <Label>Nome</Label>
+              <Input placeholder="Nome da receita" value={name} onChange={e => setName(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label>Preparo (min)</Label>
+                <Input placeholder="ex.: 13" value={String(prep)} onChange={e => setPrep(parseInt(e.target.value || '0', 10) || 0)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Cozimento (min)</Label>
+                <Input placeholder="ex.: 7" value={String(cook)} onChange={e => setCook(parseInt(e.target.value || '0', 10) || 0)} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>URL da imagem</Label>
+              <Input placeholder="https://..." value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label>Porções</Label>
+                <Input placeholder="1" value={portions} onChange={e => setPortions(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Temperatura</Label>
+                <Input placeholder="Quente/Frio" value={temperature} onChange={e => setTemperature(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Tempo total</Label>
+                <Input placeholder="ex.: 20 min ou 1 hora" value={totalTime} onChange={e => setTotalTime(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Ingredientes</Label>
+              <Textarea rows={5} placeholder="Uma linha por item: quantidade nome" value={ingredientsText} onChange={e => setIngredientsText(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Modo de preparo</Label>
+              <Textarea rows={5} placeholder="Uma etapa por linha" value={stepsText} onChange={e => setStepsText(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Dica</Label>
+              <Textarea rows={3} placeholder="Texto de dica para exibir na receita" value={tip} onChange={e => setTip(e.target.value)} />
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const base = {
+                      ...recipe,
+                      name,
+                      imageUrl,
+                      portions: parseInt(portions || '1', 10) || 1,
+                      temperature,
+                      totalTime: totalTime || `${Math.max(0, Number(prep) + Number(cook))} min`,
+                      prepMinutes: Number(prep),
+                      cookMinutes: Number(cook),
+                      tip,
+                      ingredients: (ingredientsText || '').split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+                        const [quantity, ...rest] = line.split(' ');
+                        return { name: rest.join(' ') || line, quantity: quantity || '' };
+                      }),
+                      preparationSteps: (stepsText || '')
+                        .split('\n')
+                        .map(l => l.trim())
+                        .filter(Boolean)
+                        .map((instruction, idx) => ({ step: idx + 1, instruction })),
+                      status: 'draft',
+                    };
+                    // Descobrir próximo ID pela lista pública
+                    let nextId = (Number(recipe.recipeNumber) || 0) + 1;
+                    try {
+                      const r = await fetch('/api/receitas', { cache: 'no-store' });
+                      const arr = await r.json();
+                      if (Array.isArray(arr)) {
+                        const max = arr.reduce((m: number, it: any) => Math.max(m, Number(it.recipe_number || 0)), 0);
+                        nextId = (max || 0) + 1;
+                      }
+                    } catch {}
+                    await fetch(`/api/recipes/${nextId}`, {
+                      method: 'PUT',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify({
+                        ...base,
+                        recipeNumber: nextId,
+                      }),
+                    });
+                    try {
+                      const raw = localStorage.getItem('recipes');
+                      const arr = raw ? JSON.parse(raw) : [];
+                      const next = Array.isArray(arr) ? [...arr, { ...base, recipeNumber: nextId }] : [{ ...base, recipeNumber: nextId }];
+                      localStorage.setItem('recipes', JSON.stringify(next));
+                      window.dispatchEvent(new CustomEvent('recipes-updated', { detail: { recipeNumber: nextId } }));
+                    } catch {}
+                    router.push(`/recipe/${nextId}`);
+                  } catch {}
+                }}
+              >
+                Duplicar
+              </Button>
+              <Button variant="outline" onClick={save}>Salvar</Button>
+              <Button onClick={publish}>Publicar alterações</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
 
   return (
@@ -115,12 +329,21 @@ export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer
               <ArrowLeft className="h-4 w-4" />
               Voltar
           </Button>
-          <Link href="/" className="inline-flex">
-            <Button variant="ghost" className="gap-2">
-              <Home className="h-4 w-4" />
-              Início
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            className="gap-2"
+            onClick={() => {
+              try {
+                const hasAccess = document.cookie.includes('access=');
+                router.push(hasAccess ? '/dashboard' : '/');
+              } catch {
+                router.push('/');
+              }
+            }}
+          >
+            <Home className="h-4 w-4" />
+            Início
+          </Button>
         </div>
         <div className="flex flex-col items-center">
           <button
@@ -130,7 +353,17 @@ export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer
           >
             <Heart className="w-5 h-5" />
           </button>
-          <h1 className="font-headline text-3xl md:text-4xl font-bold mb-6 text-center">{recipe.name}</h1>
+          <h1 className="font-headline text-3xl md:text-4xl font-bold text-center">{recipe.name}</h1>
+          <div className="mt-2 mb-6 flex items-center gap-2">
+            <span className={`inline-flex items-center px-2 py-1 text-xs rounded-full ring-1 ${recipe.status === 'published' ? 'bg-primary/15 text-primary ring-primary/30' : 'bg-neutral-800 text-neutral-200 ring-neutral-600'}`}>
+              {recipe.status === 'published' ? 'Publicado' : 'Rascunho'}
+            </span>
+            {dataSource === 'local' && (
+              <span className="inline-flex items-center px-2 py-1 text-xs rounded-full ring-1 bg-amber-100 text-[#1F2937] ring-amber-300">
+                Dados locais
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Mobile layout */}
@@ -179,6 +412,24 @@ export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer
 
           {/* Cronômetro */}
           {TimerCard}
+          <div className="mt-3">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const kcal = typeof recipe.proteinGrams === 'number' && recipe.proteinGrams > 0 ? Math.round(recipe.proteinGrams * 25) : 450;
+                  await fetch('/api/perfil/calorias/consumir', {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ calorias: kcal })
+                  });
+                  alert('Adicionado!');
+                } catch {}
+              }}
+            >
+              Comi esta receita ✓
+            </Button>
+          </div>
 
           {/* Ingredientes */}
           <section>
@@ -260,10 +511,29 @@ export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer
           <div className="col-span-6 row-start-2">
             <div className="mx-auto" style={{ width: 380 }}>
               {TimerCard}
+              <div className="mt-3">
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const kcal = typeof recipe.proteinGrams === 'number' && recipe.proteinGrams > 0 ? Math.round(recipe.proteinGrams * 25) : 450;
+                      await fetch('/api/perfil/calorias/consumir', {
+                        method: 'PATCH',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ calorias: kcal })
+                      });
+                      alert('Adicionado!');
+                    } catch {}
+                  }}
+                >
+                  Comi esta receita ✓
+                </Button>
+              </div>
             </div>
           </div>
         </div>
         {TipCard}
+        {isAdmin && <AdminRecipeEditor recipe={recipe} />}
     </div>
   );
 }

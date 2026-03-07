@@ -6,6 +6,7 @@ export interface Recipe {
   portions: number;
   temperature: string;
   totalTime: string; // in minutes
+  tip?: string;
   proteinGrams?: number;
   ingredients: { name: string; quantity: string; note?: string }[];
   preparationSteps: {

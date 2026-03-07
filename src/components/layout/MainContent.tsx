@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import BottomNav from '@/components/layout/BottomNav';
+import TopBar from '@/components/layout/TopBar';
 import RecipePage from '@/components/pages/RecipePage';
 import ExplorePage from '@/components/pages/ExplorePage';
 import HomePage from '@/components/pages/HomePage';
@@ -231,6 +232,7 @@ export default function MainContent({
 
   return (
     <div className="bg-background min-h-screen font-body text-foreground">
+      <TopBar />
       <main id="main-content" className="pb-10">{renderContent()}</main>
       
       <BottomNav activePage={activePage} setActivePage={setActivePage} />

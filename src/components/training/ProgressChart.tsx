@@ -15,7 +15,7 @@ export default function ProgressChart({ data }: Props) {
             <XAxis dataKey="date" tick={{ fill: '#bbb', fontSize: 12 }} />
             <YAxis tick={{ fill: '#bbb', fontSize: 12 }} />
             <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
-            <Line type="monotone" dataKey="kg" stroke="#FF4D2D" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="kg" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>

@@ -10,6 +10,8 @@ import { scoring } from '@/app/gamification-data';
 import type { WeeklyPlan } from '@/app/planning-data';
 import { initialWeeklyPlan } from '@/app/planning-data';
 import MainContent from '@/components/layout/MainContent';
+import PublicHeader from '@/components/PublicHeader';
+import Footer from '@/components/Footer';
  
 // TourGuide removido
 
@@ -68,6 +70,7 @@ export default function Home() {
   const [recipes, setRecipes] = useState<Recipe[]>(initialRecipes);
   const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   
   // Estado de tour removido
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>(initialWeeklyPlan);
@@ -116,6 +119,14 @@ export default function Home() {
         });
       }
     } catch {}
+  }, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/auth/soft-guard', { cache: 'no-store' });
+        setIsLoggedIn(r.ok);
+      } catch { setIsLoggedIn(false); }
+    })();
   }, []);
   
   const normalizeImageUrl = (url: string) => {
@@ -225,6 +236,17 @@ export default function Home() {
   useEffect(() => {
     try { localStorage.setItem('recipes', JSON.stringify(recipes)); } catch {}
   }, [recipes]);
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const raw = localStorage.getItem('recipes');
+        const arr = raw ? JSON.parse(raw) as Recipe[] : [];
+        setRecipes(arr.length ? arr : initialRecipes);
+      } catch {}
+    };
+    window.addEventListener('recipes-updated', handler);
+    return () => window.removeEventListener('recipes-updated', handler);
+  }, []);
 
   useEffect(() => {
     try { localStorage.setItem('shoppingList', JSON.stringify(shoppingList)); } catch {}
@@ -257,7 +279,7 @@ export default function Home() {
           }
           r /= 255; g /= 255; b /= 255;
           const max = Math.max(r,g,b), min = Math.min(r,g,b);
-          let h = 0, s = 0, l = (max + min) / 2;
+          let h = 0, s = 0; const l = (max + min) / 2;
           if (max !== min) {
             const d = max - min;
             s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
@@ -373,6 +395,35 @@ export default function Home() {
       description: `Você ganhou ${points} ponto(s).`,
     });
     addNotification('Check-in', `Check-in do ${meal} no dia ${day}: +${points} ponto(s).`, 'achievement');
+    try {
+      await fetch('/api/perfil/calorias/consumir', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ calorias: 450 })
+      });
+      const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
+      if (res.ok) {
+        const j = await res.json();
+        const percent = Number(j?.today?.percent || 0);
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const awardKey = `calorie_award_${todayKey}`;
+        if (percent >= 80 && percent <= 120 && !localStorage.getItem(awardKey)) {
+          const monthKey2 = new Date().toISOString().slice(0, 7);
+          const yearKey = new Date().getFullYear().toString();
+          const name = userProfile.name || 'Usuário';
+          const lbRaw = localStorage.getItem(`leaderboard_${monthKey2}`);
+          const lb = lbRaw ? JSON.parse(lbRaw) as Record<string, number> : {};
+          lb[name] = (lb[name] || 0) + 1;
+          localStorage.setItem(`leaderboard_${monthKey2}`, JSON.stringify(lb));
+          const lbyRaw = localStorage.getItem(`leaderboard_year_${yearKey}`);
+          const lby = lbyRaw ? JSON.parse(lbyRaw) as Record<string, number> : {};
+          lby[name] = (lby[name] || 0) + 1;
+          localStorage.setItem(`leaderboard_year_${yearKey}`, JSON.stringify(lby));
+          localStorage.setItem(awardKey, '1');
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('progress-updated'));
+        }
+      }
+    } catch {}
   };
 
   const handleHabit = async (action: HabitAction, type: PhotoType, imageDataUrl?: string, ml?: number) => {
@@ -438,6 +489,12 @@ export default function Home() {
             waterGoalReachedDates: [...(prev.waterGoalReachedDates || []), dateKey],
           }));
           addNotification('Selo de Hidratação', `Meta de água atingida hoje.`, 'achievement');
+        }
+        
+        // Pontos só valem quando atingir a meta mínima diária
+        if (afterTotal < goal) {
+          toast({ title: 'Sem pontuação ainda', description: 'Beba sua meta diária para receber pontos pelas fotos de água.' });
+          return;
         }
         
       } catch (e) {
@@ -574,6 +631,61 @@ export default function Home() {
     setUserProfile(defaultUserProfile);
     window.location.reload();
   };
+  useEffect(() => {
+    const onResetPoints = () => {
+      try {
+        // Reset pontos do perfil local
+        setUserProfile(prev => ({
+          ...prev,
+          points: 0,
+          recipesPrepared: 0,
+          preparedRecipeIds: [],
+          favoritedRecipeIds: [],
+        }));
+        // Reset ranking mensal/anual para o usuário atual
+        const name = userProfile.name || 'Usuário';
+        const monthKey = new Date().toISOString().slice(0, 7);
+        const yearKey = new Date().getFullYear().toString();
+        const lbRaw = localStorage.getItem(`leaderboard_${monthKey}`);
+        const lb = lbRaw ? JSON.parse(lbRaw) as Record<string, number> : {};
+        if (lb[name]) { lb[name] = 0; localStorage.setItem(`leaderboard_${monthKey}`, JSON.stringify(lb)); }
+        const lbyRaw = localStorage.getItem(`leaderboard_year_${yearKey}`);
+        const lby = lbyRaw ? JSON.parse(lbyRaw) as Record<string, number> : {};
+        if (lby[name]) { lby[name] = 0; localStorage.setItem(`leaderboard_year_${yearKey}`, JSON.stringify(lby)); }
+        // Remove flag de premiação do dia para re-testes
+        const todayKey = new Date().toISOString().slice(0, 10);
+        localStorage.removeItem(`calorie_award_${todayKey}`);
+        // Limpa consumos do dia (cookies)
+        try {
+          document.cookie = 'cal_consumed_today=; path=/; max-age=0';
+          document.cookie = 'agua_today=; path=/; max-age=0';
+        } catch {}
+        // Limpa logs locais: checkins, hábitos, água
+        try {
+          localStorage.removeItem('checkins');
+          localStorage.removeItem('habits_log');
+          localStorage.removeItem('water_log');
+        } catch {}
+        // Limpa progresso de exercícios
+        try {
+          localStorage.removeItem('exercise_status');
+          localStorage.removeItem('exercise_done_log');
+          for (let d = 1; d <= 31; d++) {
+            for (let g = 0; g <= 20; g++) {
+              localStorage.removeItem(`training_day_${d}_group_${g}_done`);
+            }
+          }
+        } catch {}
+        // Limpa notificações recentes
+        try { localStorage.removeItem('notifications'); } catch {}
+        // Notificar UI
+        window.dispatchEvent(new Event('progress-updated'));
+        addNotification('Reset de pontos', 'Pontos do usuário resetados para teste.', 'achievement');
+      } catch {}
+    };
+    window.addEventListener('reset-points', onResetPoints as EventListener);
+    return () => window.removeEventListener('reset-points', onResetPoints as EventListener);
+  }, [userProfile.name, addNotification]);
   
   if (isLoadingProfile) {
     return <div className="bg-background min-h-screen" />;
@@ -582,20 +694,52 @@ export default function Home() {
   
 
   return (
-    <MainContent
-      recipes={recipes}
-      userProfile={userProfile}
-      setUserProfile={setUserProfile}
-      isGenerating={isGenerating}
-      handleGenerateRecipe={handleGenerateRecipe}
-      handleAddRecipe={handleAddRecipe}
-      handleCheckin={handleCheckin}
-      handleHabit={handleHabit}
-      handleToggleFavorite={handleToggleFavorite}
-      handleCompleteRecipe={handleCompleteRecipe}
-      handleAddToShoppingList={handleAddToShoppingList}
-      setTheme={handleSetTheme}
-      handleResetOnboarding={handleResetOnboarding}
-    />
+    <>
+      {!isLoggedIn && (
+        <>
+          <PublicHeader />
+          <div className="bg-background">
+            <section className="max-w-6xl mx-auto px-4 pt-20 pb-10">
+              <h1 className="text-2xl font-bold mb-2">Clube de Emagrecimento</h1>
+              <p className="text-sm text-muted-foreground mb-4">Receitas, treinos e acompanhamento para resultados reais.</p>
+              <a href="/planos" className="inline-block px-4 py-2 rounded bg-primary text-primary-foreground">Ver Planos</a>
+            </section>
+            <section className="max-w-6xl mx-auto px-4 pb-10">
+              <h2 className="text-xl font-semibold mb-4">Resultados reais de alunos</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="font-semibold mb-1">Carla</div>
+                  <div className="text-sm text-muted-foreground">Perdi 7kg em 2 meses com receitas fáceis.</div>
+                </div>
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="font-semibold mb-1">Rafael</div>
+                  <div className="text-sm text-muted-foreground">Treinos curtos e eficientes, ganhei energia.</div>
+                </div>
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="font-semibold mb-1">Ana</div>
+                  <div className="text-sm text-muted-foreground">O plano VIP me deu direção e constância.</div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </>
+      )}
+      <MainContent
+        recipes={recipes}
+        userProfile={userProfile}
+        setUserProfile={setUserProfile}
+        isGenerating={isGenerating}
+        handleGenerateRecipe={handleGenerateRecipe}
+        handleAddRecipe={handleAddRecipe}
+        handleCheckin={handleCheckin}
+        handleHabit={handleHabit}
+        handleToggleFavorite={handleToggleFavorite}
+        handleCompleteRecipe={handleCompleteRecipe}
+        handleAddToShoppingList={handleAddToShoppingList}
+        setTheme={handleSetTheme}
+        handleResetOnboarding={handleResetOnboarding}
+      />
+      <Footer />
+    </>
   );
 }

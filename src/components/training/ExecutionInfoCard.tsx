@@ -9,10 +9,10 @@ type Props = {
 export default function ExecutionInfoCard({ text, audioUrl }: Props) {
   const content = text || '';
   return (
-    <div className="mx-4 mt-4 rounded-xl border border-[#FF4D2D] bg-[#121212] text-white">
+    <div className="mx-4 mt-4 rounded-xl border border-primary bg-[#121212] text-white">
       <div className="px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Info className="w-4 h-4 text-[#4da6ff]" />
+          <Info className="w-4 h-4 text-primary" />
           <span className="font-headline font-semibold">Como executar o exercício</span>
         </div>
       </div>

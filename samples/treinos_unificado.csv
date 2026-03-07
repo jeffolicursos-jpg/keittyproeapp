@@ -1,0 +1,11 @@
+tipo,slug,title,execution_text,default_series,default_reps,video_url,id,overview,cardio_title,cardio_prescription,training_day_id,order,exercise_a_slug,exercise_b_slug,prescription
+exercise,supino_reto,Supino Reto,"Deite e estabilize escápulas\nControle na descida",3,10, , , , , , , , , ,
+exercise,crucifixo,Crucifixo com Halteres,"Cotovelos semi-flexionados\nAbdução controlada",3,12, , , , , , , , , ,
+exercise,remada_baixa,Remada Baixa,"Tronco estável\nPuxe com dorso",3,10, , , , , , , , , , ,
+exercise,puxada_frontal,Puxada Frontal,"Segure pronado\nPuxe ao alto do peito",3,12, , , , , , , , , , ,
+exercise,agachamento,Agachamento,"Pés na largura do quadril\nColuna neutra",3,12, , , , , , , , , , ,
+exercise,desenvolvimento_halteres,Desenvolvimento com Halteres,"Cotovelo sob punho\nMovimento controlado",3,10, , , , , , , , , , ,
+day, ,Dia 1 • Peitoral,Peito + acessórios, , , ,DIA1,Peito e ombro,Cardio Leve,10 min leve, , , , ,
+group, , , , , , , , , , ,DIA1,1,supino_reto,crucifixo,"3x • 10–12"
+day, ,Dia 2 • Costas,Costas + acessórios, , , ,DIA2,Costas e dorsal,Cardio Moderado,15 min leve, , , , ,
+group, , , , , , , , , , ,DIA2,1,remada_baixa,puxada_frontal,"4x • 8–12"

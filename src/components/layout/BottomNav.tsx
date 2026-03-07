@@ -2,6 +2,7 @@
 
 import { Home, Compass, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 interface BottomNavProps {
   activePage: string;
@@ -16,8 +17,18 @@ const navItems = [
 
 export default function BottomNav({ activePage, setActivePage }: BottomNavProps) {
   const isRecipeDetail = activePage === 'detalhe-receita';
+  const router = useRouter();
 
   const handleNavClick = (pageId: string) => {
+    if (pageId === 'explorar') {
+      try {
+        router.push('/receitas');
+        return;
+      } catch {
+        window.location.href = '/receitas';
+        return;
+      }
+    }
     if (pageId === 'inicio' && isRecipeDetail) {
       setActivePage('inicio');
     } else {

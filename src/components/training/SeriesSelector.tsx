@@ -15,9 +15,9 @@ export default function SeriesSelector({ total, activeIndex, completed, onTap }:
           const isDone = completed.includes(idx);
           const base = "w-14 h-14 rounded-lg flex items-center justify-center text-white font-semibold";
           const style = isDone
-            ? "bg-[#FF4D2D]"
+            ? "bg-primary"
             : isActive
-              ? "border-2 border-[#FF4D2D]"
+              ? "border-2 border-primary"
               : "border border-neutral-700";
           return (
             <button

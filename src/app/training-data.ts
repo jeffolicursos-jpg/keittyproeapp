@@ -30,9 +30,9 @@ export const exercises: Exercise[] = [
   {
     slug: "agachamento-livre",
     title: "Agachamento Livre",
-    muscle: "Quadríceps/Glúteos",
-    videoUrl: "https://www.youtube.com/embed/rD7XxQm7Z9c",
-    tips: ["Pés na largura dos ombros", "Coluna neutra durante todo o movimento"],
+    muscle: "Posterior de coxa/Glúteos",
+    videoUrl: "https://www.youtube.com/embed/9FMEQXoL1sI",
+    tips: ["Quadril para trás, barra próxima às pernas", "Não arredondar a coluna"],
     series: "3x",
     reps: "10–12",
   },

@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -11,6 +11,7 @@ type Props = {
 };
 
 export default function TrainingHeader({ title, imageUrl, videoUrl, onBack }: Props) {
+  const router = useRouter();
   return (
     <div className="bg-[#0F0F0F] text-white">
       <div className="flex items-center justify-between px-4 pt-4">
@@ -18,15 +19,26 @@ export default function TrainingHeader({ title, imageUrl, videoUrl, onBack }: Pr
           <ArrowLeft className="w-4 h-4 mr-1" />
           Voltar
         </Button>
-        <Link href="/" aria-label="Início" className="inline-flex">
-          <Button variant="ghost" size="sm" className="text-white">
-            <Home className="w-4 h-4 mr-1" />
-            Início
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-white"
+          aria-label="Início"
+          onClick={() => {
+            try {
+              const hasAccess = document.cookie.includes('access=');
+              router.push(hasAccess ? '/dashboard' : '/');
+            } catch {
+              router.push('/');
+            }
+          }}
+        >
+          <Home className="w-4 h-4 mr-1" />
+          Início
+        </Button>
       </div>
       <div className="px-4 pb-3">
-        <h1 className="font-headline text-xl font-bold text-[#FF4D2D]">{title}</h1>
+        <h1 className="font-headline text-xl font-bold text-primary">{title}</h1>
       </div>
       <div className="relative w-full" style={{ aspectRatio: '16 / 9' }}>
         {videoUrl ? (

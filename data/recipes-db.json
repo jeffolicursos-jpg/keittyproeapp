@@ -1,0 +1,77 @@
+{
+  "records": {
+    "1": {
+      "name": "Torradas de Batata-doce com Abacate e Gergelim",
+      "imageUrl": "/images/sweetpotato.png",
+      "imageHint": "torradas de batata-doce com pasta de abacate",
+      "portions": 2,
+      "temperature": "Quente",
+      "totalTime": "30 min",
+      "ingredients": [
+        {
+          "name": "unidade Batata-doce grande",
+          "quantity": "1"
+        },
+        {
+          "name": "unidade Abacate maduro",
+          "quantity": "1"
+        },
+        {
+          "name": "unidade Suco de limão",
+          "quantity": "1/2"
+        },
+        {
+          "name": "gosto Sal e pimenta",
+          "quantity": "a"
+        },
+        {
+          "name": "gosto Páprica doce ou flocos de pimenta",
+          "quantity": "a"
+        },
+        {
+          "name": "colher de sopa Azeite de oliva extra virgem",
+          "quantity": "1"
+        },
+        {
+          "name": "colher de chá Sementes de gergelim ou chia (opcional)",
+          "quantity": "1"
+        }
+      ],
+      "preparationSteps": [
+        {
+          "step": 1,
+          "instruction": "Corte a batata-doce em fatias longitudinais de 0,5 a 1 cm."
+        },
+        {
+          "step": 2,
+          "instruction": "Pincele as fatias com azeite e leve ao forno a 200ºC por 20 minutos (10 de cada lado), até dourar."
+        },
+        {
+          "step": 3,
+          "instruction": "Amasse o abacate e misture com suco de limão, sal e pimenta."
+        },
+        {
+          "step": 4,
+          "instruction": "Espalhe a pasta de abacate sobre as fatias assadas."
+        },
+        {
+          "step": 5,
+          "instruction": "Finalize com páprica ou pimenta e sementes, a gosto."
+        }
+      ],
+      "benefits": [
+        "Fonte de energia com boa saciedade.",
+        "Abacate aporta gorduras boas e sabor cremoso."
+      ],
+      "recipeNumber": 1,
+      "tags": [
+        "Snack",
+        "Sem glúten"
+      ],
+      "status": "published",
+      "prepMinutes": 20,
+      "cookMinutes": 10,
+      "updated_at": "2026-02-28T17:26:06.659Z"
+    }
+  }
+}

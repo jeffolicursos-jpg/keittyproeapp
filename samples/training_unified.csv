@@ -1,0 +1,4 @@
+tipo,slug,Nome_do_exercicio,Como_executar,Series,Repeticoes,Video_URL,id,title,overview,cardio_title,cardio_prescription,training_day_id,order,exercise_a_slug,exercise_b_slug,prescription
+exercicio,leg-press-maquina,Leg Press • Máquina,"Ajuste a plataforma para amplitude confortável;Mantenha joelhos alinhados aos pés",3,10,, , , , , , , , , ,
+day, , , , , , ,DIA-1,Dia de Pernas,Agachamento e máquinas,Esteira,10 min leve, , , , , 
+group, , , , , , , , , , , ,DIA-1,1,leg-press-maquina, ,3x10
