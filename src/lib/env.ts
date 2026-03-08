@@ -9,7 +9,7 @@ export const ENV = {
   APP_URL: process.env.APP_URL || 'http://localhost:3000',
   JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-change',
   ACTIVATION_SECRET: process.env.ACTIVATION_SECRET || 'dev-activation-change',
-  DB_URL: process.env.DB_URL || process.env.DATABASE_URL || '',
+  DB_URL: process.env.DATABASE_URL || process.env.DB_URL || '',
   SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',

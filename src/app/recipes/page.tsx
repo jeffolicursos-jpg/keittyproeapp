@@ -14,23 +14,11 @@ export default function RecipesLinksPage() {
     const load = async () => {
       setLoading(true);
       try {
-        let rows: any[] | null = null;
-        try {
-          const r1 = await fetch('/api/recipes?limit=500&offset=0', { cache: 'no-store' });
-          const j1 = await r1.json().catch(() => null);
-          if (j1 && Array.isArray(j1.items)) rows = j1.items;
-        } catch {}
-        if (!rows) {
-          const r2 = await fetch('/api/receitas', { cache: 'no-store' });
-          const j2 = await r2.json().catch(() => null);
-          if (Array.isArray(j2)) rows = j2;
-        }
-        if (!rows) rows = [];
+        const r1 = await fetch('/api/recipes?limit=500&offset=0', { cache: 'no-store' });
+        const j1 = await r1.json().catch(() => null);
+        const rows: any[] = j1 && Array.isArray(j1.items) ? j1.items : [];
         const mapped: Item[] = rows
-          .map((r: any) => {
-            const id = String(r.id ?? r.recipe_number ?? r.recipeNumber ?? '').trim();
-            return { id, name: String(r.name || '').trim() }
-          })
+          .map((r: any) => ({ id: String(r.id || '').trim(), name: String(r.name || '').trim() }))
           .filter((r: Item) => !!r.id && !!r.name);
         setItems(mapped);
       } catch {

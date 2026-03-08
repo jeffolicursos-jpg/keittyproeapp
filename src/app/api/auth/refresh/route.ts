@@ -23,8 +23,9 @@ export async function POST(req: NextRequest) {
   const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await tokensRepo.saveRefreshToken(data.sub, newHash, expires);
   const res = NextResponse.json({ access, refresh: newRefresh });
-  res.cookies.set('access', access, { httpOnly: true, sameSite: 'lax', secure: true, path: '/', maxAge: 60 * 15 });
-  res.cookies.set('refresh', newRefresh, { httpOnly: true, sameSite: 'lax', secure: true, path: '/', maxAge: 60 * 60 * 24 * 30 });
+  const secure = process.env.NODE_ENV !== 'development';
+  res.cookies.set('access', access, { httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 60 * 15 });
+  res.cookies.set('refresh', newRefresh, { httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 60 * 60 * 24 * 30 });
   res.headers.set('Access-Control-Allow-Origin', ENV.CORS_ORIGIN);
   res.headers.set('Access-Control-Allow-Credentials', 'true');
   return res;

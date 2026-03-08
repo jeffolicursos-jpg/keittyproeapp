@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccess } from '@/lib/jwt';
+import { jwtVerify } from 'jose';
+import { ENV } from '@/lib/env';
 
 function isPublicPath(pathname: string) {
   if (pathname === '/login') return true;
@@ -30,8 +31,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const payload = verifyAccess(access);
-  if (!payload) {
+  try {
+    const secret = new TextEncoder().encode(ENV.JWT_SECRET);
+    const { payload } = await jwtVerify(access, secret, { algorithms: ['HS256'] });
+    if (payload?.typ !== 'access' || typeof payload?.sub !== 'string') {
+      const url = req.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
+  } catch {
     const url = req.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

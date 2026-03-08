@@ -22,10 +22,10 @@ export default function BottomNav({ activePage, setActivePage }: BottomNavProps)
   const handleNavClick = (pageId: string) => {
     if (pageId === 'explorar') {
       try {
-        router.push('/receitas');
+        router.push('/recipes');
         return;
       } catch {
-        window.location.href = '/receitas';
+        window.location.href = '/recipes';
         return;
       }
     }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { recipes } from '@/app/data';
 import RecipePage from '@/components/pages/RecipePage';
 import { useRouter, useParams } from 'next/navigation';
 import type { Recipe } from '@/app/data/types';
@@ -14,20 +13,19 @@ export default function RecipeViewer() {
 
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [dataSource, setDataSource] = useState<'api' | 'local'>('local');
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
 
   useEffect(() => {
     if (id) {
       const idStr = String(id);
       const load = async () => {
-        let foundRecipe: Recipe | null = null;
+        let found: Recipe | null = null;
         try {
           const res = await fetch(`/api/recipes/${idStr}`, { cache: 'no-store' });
           if (res.ok) {
             const j: any = await res.json().catch(() => null);
             if (j) {
-              const mapped: Recipe = {
+              found = {
                 name: String(j.name || 'Receita'),
                 imageUrl: '/images/sweetpotato.png',
                 imageHint: 'dish photo',
@@ -43,37 +41,12 @@ export default function RecipeViewer() {
                 tags: ['Publicado'],
                 status: 'published',
               };
-              foundRecipe = mapped;
-              setDataSource('api');
             }
           }
         } catch {}
-        if (!foundRecipe) {
-          const recipeId = parseInt(idStr, 10);
-          if (!Number.isNaN(recipeId)) {
-            foundRecipe = recipes.find(r => r.recipeNumber === recipeId) || null;
-            try {
-              const raw = localStorage.getItem('recipes');
-              const arr = raw ? JSON.parse(raw) as Recipe[] : [];
-              const override = arr.find(r => r.recipeNumber === recipeId);
-              if (override) foundRecipe = override;
-            } catch {}
-            setDataSource('local');
-          }
-        }
-        setRecipe(foundRecipe);
+        setRecipe(found);
       };
       load();
-
-      // Mock favorite status
-      const favs = localStorage.getItem('userProfile');
-      if (favs) {
-        const profile = JSON.parse(favs);
-        const recipeIdNum = parseInt(idStr, 10);
-        if (!Number.isNaN(recipeIdNum)) {
-          setIsFavorited(profile.favoritedRecipeIds?.includes(recipeIdNum));
-        }
-      }
     }
   }, [id]);
 
@@ -82,7 +55,6 @@ export default function RecipeViewer() {
   };
 
   const handleToggleFavorite = (recipeId: number) => {
-    // This is a mock implementation. In a real app, you'd update the user's profile.
     setIsFavorited(!isFavorited);
     console.log(`Toggled favorite for recipe ${recipeId}`);
   };
@@ -110,7 +82,7 @@ export default function RecipeViewer() {
       onCompleteRecipe={handleCompleteRecipe}
       onToggleFavorite={handleToggleFavorite}
       isFavorited={isFavorited}
-      dataSource={dataSource}
+      dataSource="api"
     />
   );
 }
