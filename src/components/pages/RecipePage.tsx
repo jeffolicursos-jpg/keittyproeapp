@@ -148,39 +148,28 @@ export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer
       const updated = {
         ...recipe,
         name,
-        imageUrl,
-        portions: parseInt(portions || '1', 10) || 1,
+        image_url: imageUrl,
+        portions: String(portions || '').trim(),
         temperature,
-        totalTime: totalTime || `${Math.max(0, Number(prep) + Number(cook))} min`,
-        prepMinutes: Number(prep),
-        cookMinutes: Number(cook),
+        total_time: totalTime || `${Math.max(0, Number(prep) + Number(cook))} min`,
+        prep_minutes: Number(prep),
+        cook_minutes: Number(cook),
         tip,
-        ingredients: (ingredientsText || '').split('\n').map(l => l.trim()).filter(Boolean).map(line => {
-          const [quantity, ...rest] = line.split(' ');
-          return { name: rest.join(' ') || line, quantity: quantity || '' };
-        }),
-        preparationSteps: (stepsText || '')
-          .split('\n')
-          .map(l => l.trim())
-          .filter(Boolean)
-          .map((instruction, idx) => ({ step: idx + 1, instruction })),
+        ingredients_text: (ingredientsText || '').split('\n').map(l => l.trim()).filter(Boolean).join('\n'),
+        preparation_steps_text: (stepsText || '').split('\n').map(l => l.trim()).filter(Boolean).join('\n'),
+        status,
       };
       try {
-        await fetch(`/api/recipes/${recipe.recipeNumber}`, {
+        const res = await fetch(`/api/recipes/${(recipe as any).id}`, {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(updated),
           cache: 'no-store',
         });
-      } catch {}
-      try {
-        const raw = localStorage.getItem('recipes');
-        const arr = raw ? JSON.parse(raw) : [];
-        const next = Array.isArray(arr) && arr.length
-          ? arr.map((r: any) => r.recipeNumber === updated.recipeNumber ? updated : r)
-          : [updated];
-        localStorage.setItem('recipes', JSON.stringify(next));
-        window.dispatchEvent(new CustomEvent('recipes-updated', { detail: { recipeNumber: updated.recipeNumber, updated } }));
+        if (!res.ok) {
+          toast({ title: 'Falha ao salvar', description: 'Não foi possível salvar a receita.' });
+          return;
+        }
       } catch {}
       setStatus(updated.status || status);
       toast({ title: 'Alterações salvas', description: 'Rascunho atualizado com sucesso.' });
@@ -189,17 +178,16 @@ export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer
     const publish = async () => {
       await save();
       try {
-        await fetch(`/api/recipes/${recipe.recipeNumber}`, {
+        const res = await fetch(`/api/recipes/${(recipe as any).id}`, {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ status: 'published' }),
           cache: 'no-store',
         });
-        const raw = localStorage.getItem('recipes');
-        const arr = raw ? JSON.parse(raw) : [];
-        const published = arr.map((r: any) => r.recipeNumber === recipe.recipeNumber ? { ...r, status: 'published' } : r);
-        localStorage.setItem('recipes', JSON.stringify(published));
-        window.dispatchEvent(new CustomEvent('recipes-updated', { detail: { recipeNumber: recipe.recipeNumber } }));
+        if (!res.ok) {
+          toast({ title: 'Falha ao publicar', description: 'Não foi possível publicar a receita.' });
+          return;
+        }
       } catch {}
       setStatus('published');
       toast({ title: 'Receita publicada', description: 'As alterações foram publicadas e refletidas no app.' });

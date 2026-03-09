@@ -25,22 +25,33 @@ export default function RecipeViewer() {
           if (res.ok) {
             const j: any = await res.json().catch(() => null);
             if (j) {
-              found = {
+              const ingText = String(j.ingredients_text || '').trim();
+              const stepsText = String(j.preparation_steps_text || '').trim();
+              const portionsNum = (() => {
+                const t = String(j.portions || '').trim();
+                const n = parseInt(t, 10);
+                return Number.isFinite(n) && n > 0 ? n : 1;
+              })();
+              found = Object.assign({
                 name: String(j.name || 'Receita'),
-                imageUrl: '/images/sweetpotato.png',
+                imageUrl: String(j.image_url || '/images/sweetpotato.png'),
                 imageHint: 'dish photo',
-                portions: 1,
-                temperature: 'Quente',
-                totalTime: '20 min',
-                tip: String(j.description || ''),
+                portions: portionsNum,
+                temperature: String(j.temperature || 'Quente'),
+                totalTime: String(j.total_time || '20 min'),
+                tip: String(j.tip || j.description || ''),
                 proteinGrams: typeof j.protein === 'number' ? j.protein : undefined,
-                ingredients: [],
-                preparationSteps: [],
+                ingredients: ingText ? ingText.split('\n').map((l: string) => {
+                  const line = l.trim();
+                  const [quantity, ...rest] = line.split(' ');
+                  return { name: rest.join(' ') || line, quantity: quantity || '' };
+                }) : [],
+                preparationSteps: stepsText ? stepsText.split('\n').map((l: string, idx: number) => ({ step: idx + 1, instruction: l.trim() })) : [],
                 benefits: [],
                 recipeNumber: 0,
-                tags: ['Publicado'],
-                status: 'published',
-              };
+                tags: [],
+                status: (j.status === 'draft' || j.status === 'published') ? j.status : 'published',
+              }, { id: j.id, prepMinutes: j.prep_minutes, cookMinutes: j.cook_minutes });
             }
           }
         } catch {}
