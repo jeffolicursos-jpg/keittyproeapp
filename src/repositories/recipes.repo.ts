@@ -15,7 +15,7 @@ export async function listRecipes(limit = 20, offset = 0) {
   const r = await query(
     `SELECT id, name, description, calories, protein, carbs, fat, created_at,
             prep_minutes, cook_minutes, image_url, portions, temperature, total_time,
-            ingredients_text, preparation_steps_text, tip, status
+            ingredients_text, preparation_steps_text, tip, status, meal_type, goal_fit
      FROM recipes
      ORDER BY created_at DESC NULLS LAST
      LIMIT $1 OFFSET $2`,
@@ -41,6 +41,8 @@ export type RecipeUpdateInput = {
   preparation_steps_text?: string | null;
   tip?: string | null;
   status?: 'draft' | 'published' | null;
+  meal_type?: 'cafe_da_manha' | 'almoco' | 'lanche_da_tarde' | 'jantar' | null;
+  goal_fit?: 'perder' | 'manter' | 'ganhar' | null;
 };
 
 export async function updateRecipeById(id: string, data: RecipeUpdateInput) {
@@ -61,11 +63,13 @@ export async function updateRecipeById(id: string, data: RecipeUpdateInput) {
        ingredients_text = COALESCE($14, ingredients_text),
        preparation_steps_text = COALESCE($15, preparation_steps_text),
        tip = COALESCE($16, tip),
-        status = COALESCE($17, status)
+        status = COALESCE($17, status),
+        meal_type = COALESCE($18, meal_type),
+        goal_fit = COALESCE($19, goal_fit)
      WHERE id=$1
      RETURNING id, name, description, calories, protein, carbs, fat, created_at,
                prep_minutes, cook_minutes, image_url, portions, temperature, total_time,
-               ingredients_text, preparation_steps_text, tip, status`,
+               ingredients_text, preparation_steps_text, tip, status, meal_type, goal_fit`,
     [
       id,
       data.name ?? null,
@@ -83,8 +87,38 @@ export async function updateRecipeById(id: string, data: RecipeUpdateInput) {
       data.ingredients_text ?? null,
       data.preparation_steps_text ?? null,
       data.tip ?? null,
-      data.status ?? null
+      data.status ?? null,
+      data.meal_type ?? null,
+      data.goal_fit ?? null
     ]
   );
   return r.rows[0] || null;
+}
+
+export async function findRecipesByFilters(opts: {
+  meal_type?: 'cafe_da_manha' | 'almoco' | 'lanche_da_tarde' | 'jantar';
+  goal_fit?: 'perder' | 'manter' | 'ganhar';
+  calories_min?: number;
+  calories_max?: number;
+  limit?: number;
+}) {
+  const conditions: string[] = ['status = $1'];
+  const params: any[] = ['published'];
+  let idx = 2;
+  if (opts.meal_type) { conditions.push(`meal_type = $${idx++}`); params.push(opts.meal_type); }
+  if (opts.goal_fit) { conditions.push(`goal_fit = $${idx++}`); params.push(opts.goal_fit); }
+  if (typeof opts.calories_min === 'number') { conditions.push(`calories >= $${idx++}`); params.push(opts.calories_min); }
+  if (typeof opts.calories_max === 'number') { conditions.push(`calories <= $${idx++}`); params.push(opts.calories_max); }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = typeof opts.limit === 'number' ? opts.limit : 20;
+  const sql = `
+    SELECT id, name, image_url, calories, status, meal_type, goal_fit
+    FROM recipes
+    ${where}
+    ORDER BY ABS(coalesce(calories,0) - coalesce($${idx},0)) ASC, created_at DESC
+    LIMIT ${limit}
+  `;
+  params.push(((opts.calories_min || 0) + (opts.calories_max || 0)) / 2 || 0);
+  const r = await query(sql, params);
+  return r.rows;
 }
