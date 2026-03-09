@@ -61,8 +61,7 @@ export async function updateRecipeById(id: string, data: RecipeUpdateInput) {
        ingredients_text = COALESCE($14, ingredients_text),
        preparation_steps_text = COALESCE($15, preparation_steps_text),
        tip = COALESCE($16, tip),
-       status = COALESCE($17, status),
-       updated_at = now()
+        status = COALESCE($17, status)
      WHERE id=$1
      RETURNING id, name, description, calories, protein, carbs, fat, created_at,
                prep_minutes, cook_minutes, image_url, portions, temperature, total_time,

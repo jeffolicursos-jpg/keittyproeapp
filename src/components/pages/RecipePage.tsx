@@ -146,7 +146,6 @@ export default function RecipePage({ recipe, onBack, activeTimer, setActiveTimer
 
     const save = async () => {
       const updated = {
-        ...recipe,
         name,
         image_url: imageUrl,
         portions: String(portions || '').trim(),
