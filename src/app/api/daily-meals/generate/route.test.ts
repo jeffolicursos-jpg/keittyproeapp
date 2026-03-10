@@ -90,4 +90,16 @@ describe('daily-meals generate API', () => {
     expect(data.error).toBe('no_profile')
     expect(hoisted.createDailyMealsForDate.mock.calls.length).toBe(0)
   })
+
+  it('falha controlada: sem candidatos suficientes', async () => {
+    hoisted.queryMock.mockResolvedValueOnce({ rows: [{ objetivo: 'manter', meta_diaria: 2000 }] })
+    hoisted.existsDailyMealsForDate.mockResolvedValueOnce(false)
+    hoisted.findRecipesByFilters.mockImplementation(async () => [])
+    const req: any = { cookies: { get: () => ({ value: 'token' }) } }
+    const res = await POST(req)
+    expect(res.status).toBe(404)
+    const data = await res.json()
+    expect(data.error).toBe('no_candidates')
+    expect(hoisted.createDailyMealsForDate.mock.calls.length).toBe(0)
+  })
 })

@@ -15,6 +15,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Bell, History, Lightbulb, AlarmClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import DailyMealsSection from '@/components/home/DailyMealsSection';
+import DailyMealsEmptyState from '@/components/home/DailyMealsEmptyState';
+import type { DailyMealItem } from '@/app/daily-meals/types';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -114,16 +117,6 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
     points: number;
   }>>([]);
   const [shareOpen, setShareOpen] = useState<{ open: boolean; title?: string; text?: string }>({ open: false });
-  type DailyMealItem = {
-    id: string;
-    recipe_id: string;
-    meal_type: 'cafe_da_manha' | 'almoco' | 'lanche_da_tarde' | 'jantar';
-    calories: number;
-    date: string;
-    consumed: boolean;
-    recipe_name?: string | null;
-    recipe_image_url?: string | null;
-  };
   const [dailyMeals, setDailyMeals] = useState<DailyMealItem[]>([]);
   const [consumeBusyId, setConsumeBusyId] = useState<string | null>(null);
   const [generateBusy, setGenerateBusy] = useState<boolean>(false);
@@ -195,6 +188,145 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
       }
     } catch {}
   }, []);
+
+  async function handleConsume(id: string) {
+    if (consumeBusyId === id) return;
+    setConsumeBusyId(id);
+    try {
+      const r = await fetch(`/api/daily-meals/${encodeURIComponent(id)}/consume`, { method: 'PATCH' });
+      if (r.ok) {
+        try {
+          const r2 = await fetch('/api/daily-meals/today', { cache: 'no-store' });
+          if (r2.ok) {
+            const j2 = await r2.json();
+            const items2 = Array.isArray(j2?.items) ? j2.items : [];
+            const normalized2: DailyMealItem[] = items2.map((it: any) => ({
+              id: String(it.id),
+              recipe_id: String(it.recipe_id),
+              meal_type: String(it.meal_type) as DailyMealItem['meal_type'],
+              calories: Number(it.calories || 0),
+              date: String(it.date || ''),
+              consumed: !!it.consumed,
+              recipe_name: it.recipe_name || null,
+              recipe_image_url: it.recipe_image_url || null,
+            }));
+            setDailyMeals(normalized2);
+          }
+        } catch {}
+        try {
+          const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
+          if (res.ok) {
+            const j = await res.json();
+            const consumedK = Number(j?.today?.calorias_consumidas || 0);
+            const goal = Number(j?.today?.meta_diaria || 0);
+            const percent = goal ? Math.round((consumedK / goal) * 100) : 0;
+            const water = Number(j?.today?.agua_ml || 0);
+            setKcalToday({ consumed: consumedK, goal, percent, water });
+          }
+        } catch {}
+      }
+    } catch {}
+    setConsumeBusyId(null);
+  }
+
+  async function handleSwap(item: DailyMealItem) {
+    if (swapBusyId) return;
+    const beforeRecipeId = item.recipe_id;
+    setSwapBusyId(item.id);
+    setSwapErrorId(null);
+    setSwapError(null);
+    try {
+      const r = await fetch(`/api/daily-meals/${encodeURIComponent(item.id)}/swap`, { method: 'PATCH' });
+      if (!r.ok) {
+        try {
+          const j = await r.json();
+          setSwapErrorId(item.id);
+          setSwapError(j?.error ? String(j.error) : 'Falha ao trocar refeição');
+        } catch {
+          setSwapErrorId(item.id);
+          setSwapError('Falha ao trocar refeição');
+        }
+      } else {
+        try {
+          const r2 = await fetch('/api/daily-meals/today', { cache: 'no-store' });
+          if (r2.ok) {
+            const j2 = await r2.json();
+            const items2 = Array.isArray(j2?.items) ? j2.items : [];
+            const normalized2: DailyMealItem[] = items2.map((it: any) => ({
+              id: String(it.id),
+              recipe_id: String(it.recipe_id),
+              meal_type: String(it.meal_type) as DailyMealItem['meal_type'],
+              calories: Number(it.calories || 0),
+              date: String(it.date || ''),
+              consumed: !!it.consumed,
+              recipe_name: it.recipe_name || null,
+              recipe_image_url: it.recipe_image_url || null,
+            }));
+            const updatedItem = normalized2.find((x) => x.id === item.id);
+            if (updatedItem && updatedItem.recipe_id === beforeRecipeId) {
+              setSwapErrorId(item.id);
+              setSwapError('Nenhuma alternativa disponível para esta refeição');
+            }
+            setDailyMeals(normalized2);
+          }
+        } catch {}
+      }
+    } catch {
+      setSwapErrorId(item.id);
+      setSwapError('Falha ao trocar refeição');
+    }
+    setSwapBusyId(null);
+  }
+
+  async function handleGenerate() {
+    if (generateBusy) return;
+    setGenerateBusy(true);
+    setGenerateError(null);
+    try {
+      const r = await fetch('/api/daily-meals/generate', { method: 'POST' });
+      if (!r.ok) {
+        try {
+          const j = await r.json();
+          setGenerateError(j?.error ? String(j.error) : 'Falha ao gerar refeições');
+        } catch {
+          setGenerateError('Falha ao gerar refeições');
+        }
+      } else {
+        try {
+          const r2 = await fetch('/api/daily-meals/today', { cache: 'no-store' });
+          if (r2.ok) {
+            const j2 = await r2.json();
+            const items2 = Array.isArray(j2?.items) ? j2.items : [];
+            const normalized2: DailyMealItem[] = items2.map((it: any) => ({
+              id: String(it.id),
+              recipe_id: String(it.recipe_id),
+              meal_type: String(it.meal_type) as DailyMealItem['meal_type'],
+              calories: Number(it.calories || 0),
+              date: String(it.date || ''),
+              consumed: !!it.consumed,
+              recipe_name: it.recipe_name || null,
+              recipe_image_url: it.recipe_image_url || null,
+            }));
+            setDailyMeals(normalized2);
+          }
+        } catch {}
+        try {
+          const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
+          if (res.ok) {
+            const j = await res.json();
+            const consumedK = Number(j?.today?.calorias_consumidas || 0);
+            const goal = Number(j?.today?.meta_diaria || 0);
+            const percent = goal ? Math.round((consumedK / goal) * 100) : 0;
+            const water = Number(j?.today?.agua_ml || 0);
+            setKcalToday({ consumed: consumedK, goal, percent, water });
+          }
+        } catch {}
+      }
+    } catch {
+      setGenerateError('Falha ao gerar refeições');
+    }
+    setGenerateBusy(false);
+  }
 
   useEffect(() => {
     try {
@@ -977,240 +1109,22 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
             </Sheet>
             
             {dailyMeals.length > 0 && (
-              <Card className="shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <AlarmClock className="w-6 h-6 text-primary" />
-                    <h2 className="font-headline text-xl md:text-2xl font-bold">Refeições de Hoje</h2>
-                  </div>
-                  <div className="space-y-2">
-                    {dailyMeals
-                      .slice()
-                      .sort((a, b) => a.meal_type.localeCompare(b.meal_type))
-                      .map((m) => {
-                        const label = m.meal_type === 'cafe_da_manha'
-                          ? 'Cafe da manha'
-                          : m.meal_type === 'almoco'
-                            ? 'Almoco'
-                            : m.meal_type === 'lanche_da_tarde'
-                              ? 'Lanche'
-                              : 'Jantar';
-                        const consumed = !!m.consumed;
-                        const busy = consumeBusyId === m.id;
-                        return (
-                          <div key={m.id} className="flex items-center justify-between rounded border bg-background px-3 py-2">
-                            <div className="flex items-center gap-3">
-                              <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden border">
-                                {m.recipe_image_url ? (
-                                  <Image
-                                    src={m.recipe_image_url}
-                                    alt={m.recipe_name || label}
-                                    fill
-                                    className="object-cover"
-                                    sizes="48px"
-                                  />
-                                ) : <div className="w-12 h-12 bg-muted" />}
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium">{label} • {m.recipe_name || 'Receita'}</div>
-                                <div className="text-xs text-muted-foreground">{m.calories} kcal</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {consumed ? (
-                                <Button size="sm" variant="outline" className="text-muted-foreground btn-wide" disabled>✅ Consumido</Button>
-                              ) : (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    className="btn-wide"
-                                    disabled={busy}
-                                    onClick={async () => {
-                                      if (busy) return;
-                                      setConsumeBusyId(m.id);
-                                      try {
-                                        const r = await fetch(`/api/daily-meals/${encodeURIComponent(m.id)}/consume`, { method: 'PATCH' });
-                                        if (r.ok) {
-                                          try {
-                                            const r2 = await fetch('/api/daily-meals/today', { cache: 'no-store' });
-                                            if (r2.ok) {
-                                              const j2 = await r2.json();
-                                              const items2 = Array.isArray(j2?.items) ? j2.items : [];
-                                              const normalized2: DailyMealItem[] = items2.map((it: any) => ({
-                                                id: String(it.id),
-                                                recipe_id: String(it.recipe_id),
-                                                meal_type: String(it.meal_type) as DailyMealItem['meal_type'],
-                                                calories: Number(it.calories || 0),
-                                                date: String(it.date || ''),
-                                                consumed: !!it.consumed,
-                                                recipe_name: it.recipe_name || null,
-                                                recipe_image_url: it.recipe_image_url || null,
-                                              }));
-                                              setDailyMeals(normalized2);
-                                            }
-                                          } catch {}
-                                          try {
-                                            const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
-                                            if (res.ok) {
-                                              const j = await res.json();
-                                              const consumedK = Number(j?.today?.calorias_consumidas || 0);
-                                              const goal = Number(j?.today?.meta_diaria || 0);
-                                              const percent = goal ? Math.round((consumedK / goal) * 100) : 0;
-                                              const water = Number(j?.today?.agua_ml || 0);
-                                              setKcalToday({ consumed: consumedK, goal, percent, water });
-                                            }
-                                          } catch {}
-                                        }
-                                      } catch {}
-                                      setConsumeBusyId(null);
-                                    }}
-                                  >
-                                    {busy ? 'Consumindo...' : 'Comer agora'}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="btn-wide border-primary text-primary"
-                                    disabled={!!swapBusyId || busy}
-                                    onClick={async () => {
-                                      if (swapBusyId) return;
-                                      const beforeRecipeId = m.recipe_id;
-                                      setSwapBusyId(m.id);
-                                      setSwapErrorId(null);
-                                      setSwapError(null);
-                                      try {
-                                        const r = await fetch(`/api/daily-meals/${encodeURIComponent(m.id)}/swap`, { method: 'PATCH' });
-                                        if (!r.ok) {
-                                          try {
-                                            const j = await r.json();
-                                            setSwapErrorId(m.id);
-                                            setSwapError(j?.error ? String(j.error) : 'Falha ao trocar refeição');
-                                          } catch {
-                                            setSwapErrorId(m.id);
-                                            setSwapError('Falha ao trocar refeição');
-                                          }
-                                        } else {
-                                          try {
-                                            const r2 = await fetch('/api/daily-meals/today', { cache: 'no-store' });
-                                            if (r2.ok) {
-                                              const j2 = await r2.json();
-                                              const items2 = Array.isArray(j2?.items) ? j2.items : [];
-                                              const normalized2: DailyMealItem[] = items2.map((it: any) => ({
-                                                id: String(it.id),
-                                                recipe_id: String(it.recipe_id),
-                                                meal_type: String(it.meal_type) as DailyMealItem['meal_type'],
-                                                calories: Number(it.calories || 0),
-                                                date: String(it.date || ''),
-                                                consumed: !!it.consumed,
-                                                recipe_name: it.recipe_name || null,
-                                                recipe_image_url: it.recipe_image_url || null,
-                                              }));
-                                              const updatedItem = normalized2.find((x) => x.id === m.id);
-                                              if (updatedItem && updatedItem.recipe_id === beforeRecipeId) {
-                                                setSwapErrorId(m.id);
-                                                setSwapError('Nenhuma alternativa disponível para esta refeição');
-                                              }
-                                              setDailyMeals(normalized2);
-                                            }
-                                          } catch {}
-                                        }
-                                      } catch {
-                                        setSwapErrorId(m.id);
-                                        setSwapError('Falha ao trocar refeição');
-                                      }
-                                      setSwapBusyId(null);
-                                    }}
-                                  >
-                                    {swapBusyId === m.id ? 'Trocando...' : 'Trocar'}
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                            {swapErrorId === m.id && swapError ? (
-                              <div className="text-[11px] text-red-500 mt-1">{swapError}</div>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
+              <DailyMealsSection
+                items={dailyMeals}
+                consumeBusyId={consumeBusyId}
+                swapBusyId={swapBusyId}
+                swapErrorId={swapErrorId}
+                swapError={swapError}
+                onConsume={handleConsume}
+                onSwap={handleSwap}
+              />
             )}
             {dailyMeals.length === 0 && (
-              <Card className="shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <AlarmClock className="w-6 h-6 text-primary" />
-                    <h2 className="font-headline text-xl md:text-2xl font-bold">Refeições de Hoje</h2>
-                  </div>
-                  <div className="rounded border bg-background p-4">
-                    <div className="font-headline text-base mb-1">Você ainda não tem refeições geradas para hoje</div>
-                    <div className="text-xs text-muted-foreground mb-3">
-                      Gere um plano baseado na sua meta diária de calorias e veja as quatro refeições do dia.
-                    </div>
-                    {generateError && (
-                      <div className="text-xs text-red-500 mb-2">{generateError}</div>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-primary text-primary btn-wide"
-                      disabled={generateBusy}
-                      onClick={async () => {
-                        if (generateBusy) return;
-                        setGenerateBusy(true);
-                        setGenerateError(null);
-                        try {
-                          const r = await fetch('/api/daily-meals/generate', { method: 'POST' });
-                          if (!r.ok) {
-                            try {
-                              const j = await r.json();
-                              setGenerateError(j?.error ? String(j.error) : 'Falha ao gerar refeições');
-                            } catch {
-                              setGenerateError('Falha ao gerar refeições');
-                            }
-                          } else {
-                            try {
-                              const r2 = await fetch('/api/daily-meals/today', { cache: 'no-store' });
-                              if (r2.ok) {
-                                const j2 = await r2.json();
-                                const items2 = Array.isArray(j2?.items) ? j2.items : [];
-                                const normalized2: DailyMealItem[] = items2.map((it: any) => ({
-                                  id: String(it.id),
-                                  recipe_id: String(it.recipe_id),
-                                  meal_type: String(it.meal_type) as DailyMealItem['meal_type'],
-                                  calories: Number(it.calories || 0),
-                                  date: String(it.date || ''),
-                                  consumed: !!it.consumed,
-                                  recipe_name: it.recipe_name || null,
-                                  recipe_image_url: it.recipe_image_url || null,
-                                }));
-                                setDailyMeals(normalized2);
-                              }
-                            } catch {}
-                            try {
-                              const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
-                              if (res.ok) {
-                                const j = await res.json();
-                                const consumedK = Number(j?.today?.calorias_consumidas || 0);
-                                const goal = Number(j?.today?.meta_diaria || 0);
-                                const percent = goal ? Math.round((consumedK / goal) * 100) : 0;
-                                const water = Number(j?.today?.agua_ml || 0);
-                                setKcalToday({ consumed: consumedK, goal, percent, water });
-                              }
-                            } catch {}
-                          }
-                        } catch {
-                          setGenerateError('Falha ao gerar refeições');
-                        }
-                        setGenerateBusy(false);
-                      }}
-                    >
-                      {generateBusy ? 'Gerando...' : 'Gerar refeições de hoje'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <DailyMealsEmptyState
+                generateBusy={generateBusy}
+                generateError={generateError}
+                onGenerate={handleGenerate}
+              />
             )}
 
 
