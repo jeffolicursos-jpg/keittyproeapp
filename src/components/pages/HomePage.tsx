@@ -95,10 +95,6 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
     startedAt?: string | null;
     doneUntil?: string | null;
   } | null>(null);
-  const [dailyDiet, setDailyDiet] = useState<Array<{ grupo: 'cafe_da_manha' | 'almoco' | 'lanche' | 'jantar'; recipe_id: number; nome: string; calorias: number }>>([]);
-  const [dietAltOpen, setDietAltOpen] = useState<{ open: boolean; grupo: 'cafe_da_manha' | 'almoco' | 'lanche' | 'jantar' | null }>({ open: false, grupo: null });
-  const [dietOptions, setDietOptions] = useState<Array<{ recipe_id: number; nome: string; calorias: number }>>([]);
-  const [dietEatOpen, setDietEatOpen] = useState<{ open: boolean; grupo: 'cafe_da_manha' | 'almoco' | 'lanche' | 'jantar' | null; nome?: string; calorias?: number }>({ open: false, grupo: null });
   const [pointsToday, setPointsToday] = useState<number>(0);
   const [pointsMonth, setPointsMonth] = useState<number>(0);
   const [pointsYear, setPointsYear] = useState<number>(0);
@@ -118,7 +114,6 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
     points: number;
   }>>([]);
   const [shareOpen, setShareOpen] = useState<{ open: boolean; title?: string; text?: string }>({ open: false });
-  const showLegacyDiet = false;
   type DailyMealItem = {
     id: string;
     recipe_id: string;
@@ -325,28 +320,6 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
       } catch {}
     })();
   }, []);
-  useEffect(() => {
-    if (!showLegacyDiet) { try { computePoints(); } catch {} return; }
-    (async () => {
-      try {
-        if (!kcalToday) return;
-        const dateKey = new Date().toISOString().slice(0, 10);
-        const saved = localStorage.getItem(`daily_diet_${dateKey}`);
-        if (saved) {
-          setDailyDiet(JSON.parse(saved));
-          return;
-        }
-        const res = await fetch('/api/dieta/hoje', { cache: 'no-store' });
-        if (res.ok) {
-          const j = await res.json();
-          const arr = Array.isArray(j?.refeicoes) ? j.refeicoes : [];
-          setDailyDiet(arr);
-          localStorage.setItem(`daily_diet_${dateKey}`, JSON.stringify(arr));
-        }
-      } catch {}
-      try { computePoints(); } catch {}
-    })();
-  }, [kcalToday?.goal]);
   useEffect(() => {
     (async () => {
       try {
@@ -1101,6 +1074,7 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
                                     disabled={!!swapBusyId || busy}
                                     onClick={async () => {
                                       if (swapBusyId) return;
+                                      const beforeRecipeId = m.recipe_id;
                                       setSwapBusyId(m.id);
                                       setSwapErrorId(null);
                                       setSwapError(null);
@@ -1131,6 +1105,11 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
                                                 recipe_name: it.recipe_name || null,
                                                 recipe_image_url: it.recipe_image_url || null,
                                               }));
+                                              const updatedItem = normalized2.find((x) => x.id === m.id);
+                                              if (updatedItem && updatedItem.recipe_id === beforeRecipeId) {
+                                                setSwapErrorId(m.id);
+                                                setSwapError('Nenhuma alternativa disponível para esta refeição');
+                                              }
                                               setDailyMeals(normalized2);
                                             }
                                           } catch {}
@@ -1817,84 +1796,6 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
                     )
                   )}
                 </div>
-                {showLegacyDiet && dailyDiet.length > 0 && (
-                  <div className="rounded border p-4 home-card mb-4 bg-primary/5 relative">
-                    <div className="font-headline text-lg mb-3">Dieta do Dia</div>
-                    <button
-                      aria-label="Compartilhar dieta"
-                      className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
-                      onClick={() => {
-                        try {
-                          const appUrl = (process?.env?.NEXT_PUBLIC_APP_URL as string) || 'https://seuapp.vercel.app';
-                          const total = dailyDiet.reduce((s, r) => s + (r.calorias || 0), 0);
-                          const meta = kcalToday?.goal || 0;
-                          const lista = dailyDiet.map(r => {
-                            const label = r.grupo === 'cafe_da_manha' ? 'Café' : r.grupo === 'almoco' ? 'Almoço' : r.grupo === 'lanche' ? 'Lanche' : 'Jantar';
-                            return `${label}: ${r.nome} (${r.calorias}kcal)`;
-                          }).join(', ');
-                          const txt = [
-                            'Minha dieta de hoje! 🍽️',
-                            '',
-                            `${total} kcal | Meta: ${meta} kcal`,
-                            '',
-                            lista,
-                            '',
-                            `Dieta Verde: ${appUrl}`
-                          ].join('\n');
-                          setShareOpen({ open: true, title: 'Compartilhar Dieta do Dia', text: txt });
-                        } catch {}
-                      }}
-                    >
-                      <Share2 className="w-4 h-4" />
-                    </button>
-                    <div className="space-y-2">
-                      {dailyDiet.map((item, idx) => (
-                        <div key={`${item.grupo}-${idx}`} className="flex items-center justify-between rounded border bg-background px-3 py-2">
-                          <div>
-                            <div className="text-sm font-medium">{item.nome}</div>
-                            <div className="text-xs text-muted-foreground">{item.grupo} • {item.calorias} kcal</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-primary text-primary"
-                              onClick={async () => {
-                                try {
-                                  const r = await fetch(`/api/recipes/by-group?grupo=${encodeURIComponent(item.grupo)}`, { cache: 'no-store' });
-                                  const j = await r.json();
-                                  setDietOptions(Array.isArray(j?.items) ? j.items : []);
-                                  setDietAltOpen({ open: true, grupo: item.grupo });
-                                } catch {}
-                              }}
-                            >
-                              Alterar refeição
-                            </Button>
-                            {(() => {
-                              const dateKey = new Date().toISOString().slice(0, 10);
-                              const doneKey = `diet_meal_done_${dateKey}_${item.grupo}`;
-                              const done = (typeof window !== 'undefined') ? localStorage.getItem(doneKey) === '1' : false;
-                              if (done) {
-                                return <Button size="sm" variant="outline" className="text-muted-foreground btn-wide" disabled>✅ Comida registrada</Button>;
-                              }
-                              return (
-                                <Button
-                                  size="sm"
-                                  className="btn-wide"
-                                  onClick={() => {
-                                    setDietEatOpen({ open: true, grupo: item.grupo, nome: item.nome, calorias: item.calorias });
-                                  }}
-                                >
-                                  Comer agora
-                                </Button>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 <div className="rounded border p-4 home-card mb-4 bg-primary/5">
                   <div className="font-headline text-lg mb-1">Pontos</div>
                   <div className="text-xs text-muted-foreground">Diário: <span className="text-foreground font-semibold">{pointsToday}</span> • Mês: <span className="text-foreground font-semibold">{pointsMonth}</span> • Ano: <span className="text-foreground font-semibold">{pointsYear}</span></div>
@@ -2088,147 +1989,6 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
                   >
                     Copiar texto
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Dialog open={dietAltOpen.open} onOpenChange={(o) => setDietAltOpen(prev => ({ ...prev, open: o }))}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Escolha outra receita</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {dietOptions.map((opt, i) => (
-                    <div key={`${opt.recipe_id}-${i}`} className="flex items-center justify-between rounded border px-3 py-2">
-                      <div>
-                        <div className="text-sm font-medium">{opt.nome}</div>
-                        <div className="text-xs text-muted-foreground">{opt.calorias} kcal</div>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          try {
-                            const grp = dietAltOpen.grupo;
-                            if (!grp) return;
-                            const next = dailyDiet.map(d => d.grupo === grp ? { grupo: grp, recipe_id: opt.recipe_id, nome: opt.nome, calorias: opt.calorias } : d);
-                            setDailyDiet(next);
-                            const dateKey = new Date().toISOString().slice(0, 10);
-                            localStorage.setItem(`daily_diet_${dateKey}`, JSON.stringify(next));
-                            setDietAltOpen({ open: false, grupo: null });
-                          } catch {}
-                        }}
-                      >
-                        Selecionar
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 flex items-center justify-end">
-                  <Button variant="outline" className="btn-wide" onClick={() => setDietAltOpen({ open: false, grupo: null })}>Fechar</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Dialog open={dietEatOpen.open} onOpenChange={(o) => setDietEatOpen(prev => ({ ...prev, open: o }))}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Comer agora • {dietEatOpen.nome}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-2">
-                  <label className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded border cursor-pointer">
-                    <Camera className="w-4 h-4" />
-                    <span>Tirar foto (câmera)</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        const calorias = dietEatOpen.calorias || 250;
-                        try {
-                          await fetch('/api/perfil/calorias/consumir', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ calorias }) });
-                          const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
-                          if (res.ok) {
-                            const j = await res.json();
-                            const consumed = Number(j?.today?.calorias_consumidas || 0);
-                            const goal = Number(j?.today?.meta_diaria || 0);
-                            const percent = goal ? Math.round((consumed / goal) * 100) : 0;
-                            const water = Number(j?.today?.agua_ml || 0);
-                            setKcalToday({ consumed, goal, percent, water });
-                            try { toast({ title: 'Adicionado!', description: `Hoje ${consumed}/${goal}kcal` }); } catch {}
-                          }
-                          const dateKey = new Date().toISOString().slice(0, 10);
-                          const doneKey = `diet_meal_done_${dateKey}_${dietEatOpen.grupo}`;
-                          localStorage.setItem(doneKey, '1');
-                          addPoints(3);
-                          setDietEatOpen({ open: false, grupo: null });
-                        } catch { setDietEatOpen({ open: false, grupo: null }); }
-                      }}
-                    />
-                  </label>
-                  <label className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded border cursor-pointer">
-                    <ImageIcon className="w-4 h-4" />
-                    <span>Escolher da galeria</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        const calorias = dietEatOpen.calorias || 250;
-                        try {
-                          await fetch('/api/perfil/calorias/consumir', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ calorias }) });
-                          const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
-                          if (res.ok) {
-                            const j = await res.json();
-                            const consumed = Number(j?.today?.calorias_consumidas || 0);
-                            const goal = Number(j?.today?.meta_diaria || 0);
-                            const percent = goal ? Math.round((consumed / goal) * 100) : 0;
-                            const water = Number(j?.today?.agua_ml || 0);
-                            setKcalToday({ consumed, goal, percent, water });
-                            try { toast({ title: 'Adicionado!', description: `Hoje ${consumed}/${goal}kcal` }); } catch {}
-                          }
-                          const dateKey = new Date().toISOString().slice(0, 10);
-                          const doneKey = `diet_meal_done_${dateKey}_${dietEatOpen.grupo}`;
-                          localStorage.setItem(doneKey, '1');
-                          addPoints(2);
-                          setDietEatOpen({ open: false, grupo: null });
-                        } catch { setDietEatOpen({ open: false, grupo: null }); }
-                      }}
-                    />
-                  </label>
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-muted-foreground">Sem foto (1 ponto)</div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        const calorias = dietEatOpen.calorias || 250;
-                        try {
-                          await fetch('/api/perfil/calorias/consumir', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ calorias }) });
-                          const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
-                          if (res.ok) {
-                            const j = await res.json();
-                            const consumed = Number(j?.today?.calorias_consumidas || 0);
-                            const goal = Number(j?.today?.meta_diaria || 0);
-                            const percent = goal ? Math.round((consumed / goal) * 100) : 0;
-                            const water = Number(j?.today?.agua_ml || 0);
-                            setKcalToday({ consumed, goal, percent, water });
-                            try { toast({ title: 'Adicionado!', description: `Hoje ${consumed}/${goal}kcal` }); } catch {}
-                          }
-                          const dateKey = new Date().toISOString().slice(0, 10);
-                          const doneKey = `diet_meal_done_${dateKey}_${dietEatOpen.grupo}`;
-                          localStorage.setItem(doneKey, '1');
-                          addPoints(1);
-                          setDietEatOpen({ open: false, grupo: null });
-                        } catch { setDietEatOpen({ open: false, grupo: null }); }
-                      }}
-                    >
-                      Sem foto
-                    </Button>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center justify-end gap-2">
-                  <Button variant="outline" onClick={() => setDietEatOpen({ open: false, grupo: null })}>Cancelar</Button>
                 </div>
               </DialogContent>
             </Dialog>

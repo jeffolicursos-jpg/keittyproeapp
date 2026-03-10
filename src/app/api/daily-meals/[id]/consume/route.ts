@@ -23,5 +23,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
      ON CONFLICT (user_id, data) DO UPDATE SET calorias_consumidas = daily_calories.calorias_consumidas + EXCLUDED.calorias_consumidas, updated_at=now()`,
     [userId, date, kcal]
   )
+  try {
+    const today = new Date()
+    const iso = (d: Date) => d.toISOString().slice(0, 10)
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
+    const prev = await query(
+      `SELECT streak_atual FROM streaks WHERE user_id=$1 AND data=$2 AND tipo='calorias' LIMIT 1`,
+      [userId, iso(yesterday)]
+    )
+    const prevStreak = Number(prev.rows[0]?.streak_atual || 0)
+    const newStreak = prevStreak > 0 ? prevStreak + 1 : 1
+    await query(
+      `INSERT INTO streaks (user_id, data, tipo, streak_atual, created_at, updated_at)
+       VALUES ($1,$2,'calorias',$3, now(), now())
+       ON CONFLICT (user_id, data, tipo) DO UPDATE SET streak_atual = GREATEST(streaks.streak_atual, EXCLUDED.streak_atual), updated_at=now()`,
+      [userId, iso(today), newStreak]
+    )
+    const prevG = await query(
+      `SELECT streak_atual FROM streaks WHERE user_id=$1 AND data=$2 AND tipo='global_streak' LIMIT 1`,
+      [userId, iso(yesterday)]
+    )
+    const prevGVal = Number(prevG.rows[0]?.streak_atual || 0)
+    const newG = prevGVal > 0 ? prevGVal + 1 : 1
+    await query(
+      `INSERT INTO streaks (user_id, data, tipo, streak_atual, created_at, updated_at)
+       VALUES ($1,$2,'global_streak',$3, now(), now())
+       ON CONFLICT (user_id, data, tipo) DO UPDATE SET streak_atual = GREATEST(streaks.streak_atual, EXCLUDED.streak_atual), updated_at=now()`,
+      [userId, iso(today), newG]
+    )
+  } catch {}
   return NextResponse.json({ ok: true, id, calories_added: kcal })
 }
