@@ -7,7 +7,13 @@ export async function listDailyMealsByDate(userId: string, date: string) {
      FROM daily_meals dm
      JOIN recipes r ON r.id = dm.recipe_id
      WHERE dm.user_id=$1 AND dm.date=$2
-     ORDER BY dm.meal_type ASC`,
+     ORDER BY CASE dm.meal_type
+       WHEN 'cafe_da_manha' THEN 1
+       WHEN 'almoco' THEN 2
+       WHEN 'lanche_da_tarde' THEN 3
+       WHEN 'jantar' THEN 4
+       ELSE 5
+     END ASC`,
     [userId, date]
   )
   return r.rows

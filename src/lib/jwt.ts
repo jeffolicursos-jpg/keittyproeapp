@@ -4,6 +4,9 @@ import { ENV } from '@/lib/env';
 import crypto from 'crypto';
 
 type JWTPayload = { sub: string; typ?: 'access' | 'refresh' };
+function isUuid(v: string) {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(v)
+}
 
 function getJwt() {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -30,6 +33,7 @@ export function verifyAccess(token: string): JWTPayload | null {
     const jwt = getJwt();
     const data = jwt.verify(token, ENV.JWT_SECRET) as JWTPayload;
     if (data.typ !== 'access') return null;
+    if (!data?.sub || !isUuid(data.sub)) return null;
     return data;
   } catch { return null; }
 }

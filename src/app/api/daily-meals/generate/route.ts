@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const userId = data.sub
   const today = new Date().toISOString().slice(0, 10)
   try {
-    const profRes = await query('SELECT objetivo, meta_diaria FROM user_profile WHERE user_id=$1 LIMIT 1', [userId])
+    const profRes = await query('SELECT objetivo, meta_diaria FROM public.user_profile WHERE user_id=$1 LIMIT 1', [userId])
     const prof = profRes.rows[0] || null
     const objetivo: 'perder' | 'manter' | 'ganhar' = (prof?.objetivo || 'manter') as any
     const meta = Number(prof?.meta_diaria || 0)

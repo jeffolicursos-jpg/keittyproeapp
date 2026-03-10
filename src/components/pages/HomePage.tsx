@@ -217,8 +217,10 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
           const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
           if (res.ok) {
             const j = await res.json();
-            const consumedK = Number(j?.today?.calorias_consumidas || 0);
-            const goal = Number(j?.today?.meta_diaria || 0);
+            const consumedKRaw = Number(j?.today?.calorias_consumidas || 0);
+            const goalRaw = Number(j?.today?.meta_diaria || 0);
+            const consumedK = Math.round(consumedKRaw);
+            const goal = Math.round(goalRaw);
             const percent = goal ? Math.round((consumedK / goal) * 100) : 0;
             const water = Number(j?.today?.agua_ml || 0);
             setKcalToday({ consumed: consumedK, goal, percent, water });
@@ -314,8 +316,10 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
           const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
           if (res.ok) {
             const j = await res.json();
-            const consumedK = Number(j?.today?.calorias_consumidas || 0);
-            const goal = Number(j?.today?.meta_diaria || 0);
+            const consumedKRaw = Number(j?.today?.calorias_consumidas || 0);
+            const goalRaw = Number(j?.today?.meta_diaria || 0);
+            const consumedK = Math.round(consumedKRaw);
+            const goal = Math.round(goalRaw);
             const percent = goal ? Math.round((consumedK / goal) * 100) : 0;
             const water = Number(j?.today?.agua_ml || 0);
             setKcalToday({ consumed: consumedK, goal, percent, water });
@@ -351,8 +355,10 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
         const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
         if (res.ok) {
           const j = await res.json();
-          const consumed = Number(j?.today?.calorias_consumidas || 0);
-          const goal = Number(j?.today?.meta_diaria || 0);
+          const consumedRaw = Number(j?.today?.calorias_consumidas || 0);
+          const goalRaw = Number(j?.today?.meta_diaria || 0);
+          const consumed = Math.round(consumedRaw);
+          const goal = Math.round(goalRaw);
           const percent = goal ? Math.round((consumed / goal) * 100) : 0;
           const water = Number(j?.today?.agua_ml || 0);
           setKcalToday({ consumed, goal, percent, water });
@@ -869,7 +875,7 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span>
                         {kcalToday
-                          ? `${kcalToday.consumed}/${kcalToday.goal} kcal`
+                          ? `${Math.round(kcalToday.consumed)}/${Math.round(kcalToday.goal)} kcal`
                           : (
                               <Button
                                 size="sm"
@@ -907,9 +913,11 @@ export default function HomePage({ userProfile, onSelectRecipe, suggestion, rece
                             const res = await fetch('/api/perfil/calorias/me', { cache: 'no-store' });
                             if (res.ok) {
                               const j = await res.json();
-                              const consumed = Number(j?.today?.calorias_consumidas || 0);
-                              const goal = Number(j?.today?.meta_diaria || 0);
-                              const percent = goal ? Math.round((consumed / goal) * 100) : 0;
+                            const consumedRaw = Number(j?.today?.calorias_consumidas || 0);
+                            const goalRaw = Number(j?.today?.meta_diaria || 0);
+                            const consumed = Math.round(consumedRaw);
+                            const goal = Math.round(goalRaw);
+                            const percent = goal ? Math.round((consumed / goal) * 100) : 0;
                               const water = Number(j?.today?.agua_ml || 0);
                               setKcalToday({ consumed, goal, percent, water });
                               try {

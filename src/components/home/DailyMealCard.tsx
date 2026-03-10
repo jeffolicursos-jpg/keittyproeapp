@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import type { DailyMealItem } from '@/app/daily-meals/types'
+import Link from 'next/link'
 
 interface Props {
   item: DailyMealItem
@@ -28,17 +29,23 @@ export default function DailyMealCard({ item, consumeBusyId, swapBusyId, swapErr
       <div className="flex items-center gap-3">
         <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden border">
           {item.recipe_image_url ? (
-            <Image
-              src={item.recipe_image_url}
-              alt={item.recipe_name || label}
-              fill
-              className="object-cover"
-              sizes="48px"
-            />
+            <Link href={item.recipe_id ? `/recipe/${encodeURIComponent(item.recipe_id)}` : '#'} aria-label={item.recipe_name || label}>
+              <Image
+                src={item.recipe_image_url}
+                alt={item.recipe_name || label}
+                fill
+                className="object-cover"
+                sizes="48px"
+              />
+            </Link>
           ) : <div className="w-12 h-12 bg-muted" />}
         </div>
         <div>
-          <div className="text-sm font-medium">{label} • {item.recipe_name || 'Receita'}</div>
+          <div className="text-sm font-medium">
+            {label} • {item.recipe_id
+              ? <Link href={`/recipe/${encodeURIComponent(item.recipe_id)}`} className="underline">{item.recipe_name || 'Receita'}</Link>
+              : (item.recipe_name || 'Receita')}
+          </div>
           <div className="text-xs text-muted-foreground">{item.calories} kcal</div>
         </div>
       </div>

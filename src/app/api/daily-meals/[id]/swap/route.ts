@@ -15,7 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params
   const current = await getMealById(id, userId)
   if (!current) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  const profRes = await query('SELECT objetivo FROM user_profile WHERE user_id=$1 LIMIT 1', [userId])
+  const profRes = await query('SELECT objetivo FROM public.user_profile WHERE user_id=$1 LIMIT 1', [userId])
   const objetivo: 'perder' | 'manter' | 'ganhar' = String(profRes.rows[0]?.objetivo || 'manter') as any
   const target = Number(current.calories || 0)
   const min = Math.round(target * 0.85)
